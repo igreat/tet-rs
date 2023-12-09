@@ -26,30 +26,47 @@ async fn main() {
     let drop_time = 1.0;
     let mut prev_time = get_time();
     loop {
+        // if is_key_pressed(KeyCode::Up) {
+        //     board.remove_piece(&piece);
+        //     piece.rotate();
+        //     board.add_piece(&piece);
+        // }
+        // if is_key_pressed(KeyCode::Down) {
+        //     board.remove_piece(&piece);
+        //     piece.move_down();
+        //     board.add_piece(&piece);
+        // }
+        // if is_key_pressed(KeyCode::Right) {
+        //     board.remove_piece(&piece);
+        //     piece.move_right();
+        //     board.add_piece(&piece);
+        // }
+        // if is_key_pressed(KeyCode::Left) {
+        //     board.remove_piece(&piece);
+        //     piece.move_left();
+        //     board.add_piece(&piece);
+        // }
+        // if get_time() - prev_time > drop_time {
+        //     board.remove_piece(&piece);
+        //     piece.move_down();
+        //     board.add_piece(&piece);
+        //     prev_time = get_time();
+        // }
+
         if is_key_pressed(KeyCode::Up) {
-            board.remove_piece(&piece);
-            piece.rotate();
-            board.add_piece(&piece);
+            board.move_piece(&mut piece, Move::Rotate);
         }
         if is_key_pressed(KeyCode::Down) {
-            board.remove_piece(&piece);
-            piece.move_down();
-            board.add_piece(&piece);
+            board.move_piece(&mut piece, Move::Down);
         }
         if is_key_pressed(KeyCode::Right) {
-            board.remove_piece(&piece);
-            piece.move_right();
-            board.add_piece(&piece);
+            board.move_piece(&mut piece, Move::Right);
         }
         if is_key_pressed(KeyCode::Left) {
-            board.remove_piece(&piece);
-            piece.move_left();
-            board.add_piece(&piece);
+            board.move_piece(&mut piece, Move::Left);
         }
         if get_time() - prev_time > drop_time {
-            board.remove_piece(&piece);
-            piece.move_down();
-            board.add_piece(&piece);
+            board.move_piece(&mut piece, Move::Down);
             prev_time = get_time();
         }
 
@@ -104,6 +121,8 @@ enum Tetromino {
     J,
     L,
 }
+
+#[derive(Clone)]
 struct Piece {
     tetromino: Tetromino,
     x: isize,
@@ -112,7 +131,7 @@ struct Piece {
 }
 
 impl Piece {
-    fn get_base_coords(&self) -> [(usize, usize); 4] {
+    fn get_base_coords(&self) -> [(isize, isize); 4] {
         let coords; // Initialize an array with default values
         match self.tetromino {
             Tetromino::I => match self.orientation {
@@ -147,15 +166,12 @@ impl Piece {
         coords
     }
 
-    fn get_coords(&self) -> [(usize, usize); 4] {
+    fn get_coords(&self) -> [(isize, isize); 4] {
         let base_coords = self.get_base_coords();
         let mut coords = [(0, 0); 4];
         for i in 0..4 {
             // coords[i] = (base_coords[i].0 + self.x, base_coords[i].1 + self.y);
-            coords[i] = (
-                (base_coords[i].0 as isize + self.x) as usize,
-                (base_coords[i].1 as isize + self.y) as usize,
-            );
+            coords[i] = (base_coords[i].0 + self.x, base_coords[i].1 + self.y);
         }
         coords
     }
@@ -184,11 +200,20 @@ impl Piece {
     }
 }
 
+#[derive(Clone, Copy)]
 enum Orientation {
     Up = 0,
     Right,
     Down,
     Left,
+}
+
+#[derive(Clone, Copy)]
+enum Move {
+    Left,
+    Right,
+    Down,
+    Rotate,
 }
 
 #[derive(Clone, Copy)]
@@ -205,13 +230,62 @@ impl Board {
 
     fn add_piece(&mut self, piece: &Piece) {
         for &(x, y) in &piece.get_coords() {
-            self.grid[y][x] = piece.tetromino;
+            self.grid[y as usize][x as usize] = piece.tetromino;
         }
     }
 
     fn remove_piece(&mut self, piece: &Piece) {
         for &(x, y) in &piece.get_coords() {
-            self.grid[y][x] = Tetromino::E;
+            self.grid[y as usize][x as usize] = Tetromino::E;
+        }
+    }
+
+    fn is_out_of_bounds(&self, piece: &Piece) -> bool {
+        for &(x, y) in &piece.get_coords() {
+            if x < 0 || x >= WIDTH as isize || y >= HEIGHT as isize {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn is_colliding(&self, piece: &Piece) -> bool {
+        for &(x, y) in &piece.get_coords() {
+            match self.grid[y as usize][x as usize] {
+                Tetromino::E => continue,
+                _ => return true,
+            }
+        }
+        false
+    }
+
+    // to check if I can make a move, I'll create a copy of the piece and try to move it
+    // if it's possible, I'll update the original piece
+    fn can_move(&mut self, piece: &Piece, mov: Move) -> bool {
+        // will have to remove the piece from the board, move it, and then add it back
+        self.remove_piece(piece);
+        let mut piece_copy = piece.clone();
+        match mov {
+            Move::Left => piece_copy.move_left(),
+            Move::Right => piece_copy.move_right(),
+            Move::Down => piece_copy.move_down(),
+            Move::Rotate => piece_copy.rotate(),
+        }
+        let can_move = !self.is_out_of_bounds(&piece_copy) && !self.is_colliding(&piece_copy);
+        self.add_piece(piece);
+        can_move
+    }
+
+    fn move_piece(&mut self, piece: &mut Piece, mov: Move) {
+        if self.can_move(piece, mov) {
+            self.remove_piece(piece);
+            match mov {
+                Move::Left => piece.move_left(),
+                Move::Right => piece.move_right(),
+                Move::Down => piece.move_down(),
+                Move::Rotate => piece.rotate(),
+            }
+            self.add_piece(piece);
         }
     }
 
