@@ -1,4 +1,3 @@
-use macroquad::rand::gen_range;
 use macroquad::{miniquad::window::set_window_size, prelude::*};
 
 const WIDTH: usize = 10;
@@ -30,19 +29,12 @@ async fn main() {
     let mut prev_time = get_time();
     loop {
         // check if the previous piece is placed
-        if board.is_placed(&piece) {
+        if board.is_placed(&piece) || board.just_dropped {
             board.add_piece(&piece);
-            piece = Piece {
-                tetromino: if gen_range(0, 2) == 0 {
-                    Tetromino::T
-                } else {
-                    Tetromino::I
-                },
-                x: 0,
-                y: 0,
-                orientation: Orientation::Up,
-            };
+            piece = get_next_piece();
             board.add_piece(&piece);
+
+            board.just_dropped = false;
         }
 
         if is_key_pressed(KeyCode::Up) {
@@ -56,6 +48,9 @@ async fn main() {
         }
         if is_key_pressed(KeyCode::Left) {
             board.move_piece(&mut piece, Move::Left);
+        }
+        if is_key_pressed(KeyCode::Space) {
+            board.move_piece(&mut piece, Move::Drop);
         }
         if get_time() - prev_time > drop_time {
             board.move_piece(&mut piece, Move::Down);
@@ -207,11 +202,13 @@ enum Move {
     Right,
     Down,
     Rotate,
+    Drop,
 }
 
 #[derive(Clone, Copy)]
 struct Board {
     grid: [[Tetromino; WIDTH]; HEIGHT],
+    just_dropped: bool,
     is_placed_time: Option<f64>,
 }
 
@@ -219,6 +216,7 @@ impl Board {
     fn new() -> Board {
         Board {
             grid: [[Tetromino::E; WIDTH]; HEIGHT],
+            just_dropped: false,
             is_placed_time: None,
         }
     }
@@ -301,6 +299,11 @@ impl Board {
             Move::Right => piece_copy.move_right(),
             Move::Down => piece_copy.move_down(),
             Move::Rotate => piece_copy.rotate(),
+            Move::Drop => {
+                self.drop_piece(&mut piece_copy);
+                // make sure to remove the final piece
+                self.remove_piece(&piece_copy);
+            }
         }
         let can_move = !self.is_out_of_bounds(&piece_copy) && !self.is_colliding(&piece_copy);
         self.add_piece(piece);
@@ -315,9 +318,20 @@ impl Board {
                 Move::Right => piece.move_right(),
                 Move::Down => piece.move_down(),
                 Move::Rotate => piece.rotate(),
+                Move::Drop => self.drop_piece(piece),
             }
             self.add_piece(piece);
         }
+    }
+
+    fn drop_piece(&mut self, piece: &mut Piece) {
+        while self.can_move(piece, Move::Down) {
+            self.move_piece(piece, Move::Down);
+        }
+
+        self.just_dropped = true;
+        // make sure to reset the placement timer
+        self.is_placed_time = None;
     }
 
     fn print(&self) {
@@ -346,5 +360,35 @@ fn draw_grid(width: usize, height: usize) {
                 BLACK,
             );
         }
+    }
+}
+
+fn get_next_piece() -> Piece {
+    // Piece {
+    //     tetromino: if gen_range(0, 2) == 0 {
+    //         Tetromino::T
+    //     } else {
+    //         Tetromino::I
+    //     },
+    //     x: 0,
+    //     y: 0,
+    //     orientation: Orientation::Up,
+    // }
+    Piece {
+        tetromino: rand::ChooseRandom::choose(&vec![
+            Tetromino::I,
+            Tetromino::O,
+            Tetromino::T,
+            // UNIMPLEMENTED PIECES
+            // Tetromino::S,
+            // Tetromino::Z,
+            // Tetromino::J,
+            // Tetromino::L,
+        ])
+        .unwrap()
+        .clone(),
+        x: 0,
+        y: 0,
+        orientation: Orientation::Up,
     }
 }
