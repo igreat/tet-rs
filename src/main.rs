@@ -30,7 +30,8 @@ async fn main() {
     loop {
         // check if the previous piece is placed
         if board.is_placed(&piece) || board.just_dropped {
-            board.add_piece(&piece);
+            board.clear_lines();
+
             piece = get_next_piece();
             board.add_piece(&piece);
 
@@ -120,38 +121,22 @@ struct Piece {
 
 impl Piece {
     fn get_base_coords(&self) -> [(isize, isize); 4] {
-        let coords; // Initialize an array with default values
         match self.tetromino {
             Tetromino::I => match self.orientation {
-                Orientation::Up | Orientation::Down => {
-                    coords = [(3, 0), (4, 0), (5, 0), (6, 0)];
-                }
-                Orientation::Right | Orientation::Left => {
-                    coords = [(5, 0), (5, 1), (5, 2), (5, 3)];
-                }
+                Orientation::Up | Orientation::Down => [(3, 0), (4, 0), (5, 0), (6, 0)],
+                Orientation::Right | Orientation::Left => [(5, 0), (5, 1), (5, 2), (5, 3)],
             },
-            Tetromino::O => {
-                coords = [(4, 0), (5, 0), (4, 1), (5, 1)];
-            }
+            Tetromino::O => [(4, 0), (5, 0), (4, 1), (5, 1)],
             Tetromino::T => match self.orientation {
-                Orientation::Up => {
-                    coords = [(4, 0), (3, 1), (4, 1), (5, 1)];
-                }
-                Orientation::Right => {
-                    coords = [(4, 0), (5, 1), (4, 1), (4, 2)];
-                }
-                Orientation::Down => {
-                    coords = [(4, 1), (3, 0), (4, 0), (5, 0)];
-                }
-                Orientation::Left => {
-                    coords = [(4, 0), (3, 1), (4, 1), (4, 2)];
-                }
+                Orientation::Up => [(4, 0), (3, 1), (4, 1), (5, 1)],
+                Orientation::Right => [(4, 0), (5, 1), (4, 1), (4, 2)],
+                Orientation::Down => [(4, 1), (3, 0), (4, 0), (5, 0)],
+                Orientation::Left => [(4, 0), (3, 1), (4, 1), (4, 2)],
             },
             _ => {
-                coords = [(0, 0); 4]; // Default position for other shapes
+                [(0, 0); 4] // yet to be implemented
             }
-        };
-        coords
+        }
     }
 
     fn get_coords(&self) -> [(isize, isize); 4] {
@@ -334,6 +319,39 @@ impl Board {
         self.is_placed_time = None;
     }
 
+    fn clear_lines(&mut self) {
+        let mut clears = 0;
+        let mut y = HEIGHT - 1;
+        while y > 0 {
+            let mut is_clear = true;
+            for x in 0..WIDTH {
+                if let Tetromino::E = self.grid[y][x] {
+                    is_clear = false;
+                    break;
+                }
+            }
+            if is_clear {
+                clears += 1;
+                if y == HEIGHT - 1 {
+                    for x in 0..WIDTH {
+                        self.grid[y][x] = Tetromino::E;
+                    }
+                }
+                for y2 in (1..=y).rev() {
+                    for x in 0..WIDTH {
+                        self.grid[y2][x] = self.grid[y2 - 1][x];
+                    }
+                }
+            } else {
+                y -= 1;
+            }
+        }
+
+        if clears > 0 {
+            println!("cleared {} lines", clears);
+        }
+    }
+
     fn print(&self) {
         for row in self.grid.iter() {
             for &cell in row {
@@ -364,18 +382,8 @@ fn draw_grid(width: usize, height: usize) {
 }
 
 fn get_next_piece() -> Piece {
-    // Piece {
-    //     tetromino: if gen_range(0, 2) == 0 {
-    //         Tetromino::T
-    //     } else {
-    //         Tetromino::I
-    //     },
-    //     x: 0,
-    //     y: 0,
-    //     orientation: Orientation::Up,
-    // }
     Piece {
-        tetromino: rand::ChooseRandom::choose(&vec![
+        tetromino: *rand::ChooseRandom::choose(&vec![
             Tetromino::I,
             Tetromino::O,
             Tetromino::T,
@@ -385,8 +393,7 @@ fn get_next_piece() -> Piece {
             // Tetromino::J,
             // Tetromino::L,
         ])
-        .unwrap()
-        .clone(),
+        .unwrap(),
         x: 0,
         y: 0,
         orientation: Orientation::Up,
