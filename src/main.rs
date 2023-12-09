@@ -16,22 +16,34 @@ async fn main() {
     };
 
     board.add_piece(&piece);
-
-    let mut prev_time_down = get_time();
-    let mut prev_time_rotate = get_time();
-    let dt = 1.0;
+    let drop_time = 1.0;
+    let mut prev_time = get_time();
     loop {
-        if get_time() - prev_time_down > dt {
-            board.remove_piece(&piece);
-            piece.move_down();
-            board.add_piece(&piece);
-            prev_time_down = get_time();
-        }
-        if get_time() - prev_time_rotate > 3.0 * dt {
+        if is_key_pressed(KeyCode::Up) {
             board.remove_piece(&piece);
             piece.rotate();
             board.add_piece(&piece);
-            prev_time_rotate = get_time();
+        }
+        if is_key_pressed(KeyCode::Down) {
+            board.remove_piece(&piece);
+            piece.move_down();
+            board.add_piece(&piece);
+        }
+        if is_key_pressed(KeyCode::Right) {
+            board.remove_piece(&piece);
+            piece.move_right();
+            board.add_piece(&piece);
+        }
+        if is_key_pressed(KeyCode::Left) {
+            board.remove_piece(&piece);
+            piece.move_left();
+            board.add_piece(&piece);
+        }
+        if get_time() - prev_time > drop_time {
+            board.remove_piece(&piece);
+            piece.move_down();
+            board.add_piece(&piece);
+            prev_time = get_time();
         }
 
         clear_background(WHITE);
@@ -95,8 +107,8 @@ enum Tetromino {
 }
 struct Piece {
     tetromino: Tetromino,
-    x: usize,
-    y: usize,
+    x: isize,
+    y: isize,
     orientation: Orientation,
 }
 
@@ -130,7 +142,7 @@ impl Piece {
                 }
             },
             _ => {
-                coords = [(self.x, self.y); 4]; // Default position for other shapes
+                coords = [(0, 0); 4]; // Default position for other shapes
             }
         };
         coords
@@ -140,7 +152,11 @@ impl Piece {
         let base_coords = self.get_base_coords();
         let mut coords = [(0, 0); 4];
         for i in 0..4 {
-            coords[i] = (base_coords[i].0 + self.x, base_coords[i].1 + self.y);
+            // coords[i] = (base_coords[i].0 + self.x, base_coords[i].1 + self.y);
+            coords[i] = (
+                (base_coords[i].0 as isize + self.x) as usize,
+                (base_coords[i].1 as isize + self.y) as usize,
+            );
         }
         coords
     }
@@ -166,10 +182,6 @@ impl Piece {
 
     fn move_down(&mut self) {
         self.y += 1;
-    }
-
-    fn move_up(&mut self) {
-        self.y -= 1;
     }
 }
 
