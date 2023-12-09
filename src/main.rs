@@ -1,3 +1,4 @@
+use macroquad::rand::gen_range;
 use macroquad::{miniquad::window::set_window_size, prelude::*};
 
 const WIDTH: usize = 10;
@@ -6,6 +7,8 @@ const HEIGHT: usize = 24;
 const SQUARE_SIZE: f32 = 27.0;
 const MARGIN_LEFT: f32 = SQUARE_SIZE;
 const MARGIN_TOP: f32 = SQUARE_SIZE;
+
+const PLACEMENT_DELAY: f64 = 0.5;
 
 #[macroquad::main("Tetris")]
 async fn main() {
@@ -26,32 +29,21 @@ async fn main() {
     let drop_time = 1.0;
     let mut prev_time = get_time();
     loop {
-        // if is_key_pressed(KeyCode::Up) {
-        //     board.remove_piece(&piece);
-        //     piece.rotate();
-        //     board.add_piece(&piece);
-        // }
-        // if is_key_pressed(KeyCode::Down) {
-        //     board.remove_piece(&piece);
-        //     piece.move_down();
-        //     board.add_piece(&piece);
-        // }
-        // if is_key_pressed(KeyCode::Right) {
-        //     board.remove_piece(&piece);
-        //     piece.move_right();
-        //     board.add_piece(&piece);
-        // }
-        // if is_key_pressed(KeyCode::Left) {
-        //     board.remove_piece(&piece);
-        //     piece.move_left();
-        //     board.add_piece(&piece);
-        // }
-        // if get_time() - prev_time > drop_time {
-        //     board.remove_piece(&piece);
-        //     piece.move_down();
-        //     board.add_piece(&piece);
-        //     prev_time = get_time();
-        // }
+        // check if the previous piece is placed
+        if board.is_placed(&piece) {
+            board.add_piece(&piece);
+            piece = Piece {
+                tetromino: if gen_range(0, 2) == 0 {
+                    Tetromino::T
+                } else {
+                    Tetromino::I
+                },
+                x: 0,
+                y: 0,
+                orientation: Orientation::Up,
+            };
+            board.add_piece(&piece);
+        }
 
         if is_key_pressed(KeyCode::Up) {
             board.move_piece(&mut piece, Move::Rotate);
@@ -106,6 +98,7 @@ async fn main() {
                 );
             }
         }
+
         next_frame().await
     }
 }
@@ -219,12 +212,14 @@ enum Move {
 #[derive(Clone, Copy)]
 struct Board {
     grid: [[Tetromino; WIDTH]; HEIGHT],
+    is_placed_time: Option<f64>,
 }
 
 impl Board {
     fn new() -> Board {
         Board {
             grid: [[Tetromino::E; WIDTH]; HEIGHT],
+            is_placed_time: None,
         }
     }
 
@@ -259,8 +254,44 @@ impl Board {
         false
     }
 
-    // to check if I can make a move, I'll create a copy of the piece and try to move it
-    // if it's possible, I'll update the original piece
+    fn is_placed(&mut self, piece: &Piece) -> bool {
+        // first I'll have to remove the piece from the board
+        self.remove_piece(piece);
+        let mut is_placed = false;
+        // then check if it can move down
+        for &(x, y) in &piece.get_coords() {
+            if y == HEIGHT as isize - 1 {
+                is_placed = true;
+                break;
+            }
+            match self.grid[(y + 1) as usize][x as usize] {
+                Tetromino::E => continue,
+                _ => {
+                    is_placed = true;
+                    break;
+                }
+            }
+        }
+        self.add_piece(piece);
+        if is_placed {
+            match self.is_placed_time {
+                None => {
+                    self.is_placed_time = Some(get_time()); // start the timer
+                }
+                Some(time) => {
+                    if get_time() - time > PLACEMENT_DELAY {
+                        self.is_placed_time = None;
+                        return true;
+                    }
+                }
+            }
+        } else if self.is_placed_time.is_some() {
+            // if the piece isn't placed but the timer is running, then the timer should be reset
+            self.is_placed_time = None;
+        }
+        false
+    }
+
     fn can_move(&mut self, piece: &Piece, mov: Move) -> bool {
         // will have to remove the piece from the board, move it, and then add it back
         self.remove_piece(piece);
