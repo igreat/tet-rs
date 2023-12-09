@@ -3,13 +3,20 @@ use macroquad::{miniquad::window::set_window_size, prelude::*};
 const WIDTH: usize = 10;
 const HEIGHT: usize = 24;
 
+const SQUARE_SIZE: f32 = 27.0;
+const MARGIN_LEFT: f32 = SQUARE_SIZE;
+const MARGIN_TOP: f32 = SQUARE_SIZE;
+
 #[macroquad::main("Tetris")]
 async fn main() {
-    set_window_size(WIDTH as u32 * 20, HEIGHT as u32 * 20);
+    set_window_size(
+        ((WIDTH + 2) as f32 * SQUARE_SIZE) as u32,
+        ((HEIGHT + 3) as f32 * SQUARE_SIZE) as u32,
+    );
 
     let mut board = Board::new();
     let mut piece = Piece {
-        tetromino: Tetromino::I,
+        tetromino: Tetromino::T,
         x: 0,
         y: 0,
         orientation: Orientation::Up,
@@ -46,11 +53,14 @@ async fn main() {
             prev_time = get_time();
         }
 
-        clear_background(WHITE);
+        clear_background(LIGHTGRAY);
+        draw_grid(WIDTH, HEIGHT);
         for y in 0..HEIGHT {
             for x in 0..WIDTH {
                 let color = match board.grid[y][x] {
-                    Tetromino::E => WHITE,
+                    Tetromino::E => {
+                        continue;
+                    }
                     Tetromino::I => BLUE,
                     Tetromino::O => YELLOW,
                     Tetromino::T => PURPLE,
@@ -60,38 +70,27 @@ async fn main() {
                     Tetromino::L => BROWN,
                 };
                 // outer rectangle
-                draw_rectangle(x as f32 * 20.0, y as f32 * 20.0, 20.0, 20.0, BLACK);
+                draw_rectangle(
+                    x as f32 * SQUARE_SIZE + MARGIN_LEFT,
+                    y as f32 * SQUARE_SIZE + MARGIN_TOP,
+                    SQUARE_SIZE,
+                    SQUARE_SIZE,
+                    BLACK,
+                );
+                let inner_size = SQUARE_SIZE * 0.8;
+                let inner_offset = (SQUARE_SIZE - inner_size) / 2.0;
                 // inner rectangle
                 draw_rectangle(
-                    x as f32 * 20.0 + 1.0,
-                    y as f32 * 20.0 + 1.0,
-                    18.0,
-                    18.0,
+                    x as f32 * SQUARE_SIZE + inner_offset + MARGIN_LEFT,
+                    y as f32 * SQUARE_SIZE + inner_offset + MARGIN_TOP,
+                    inner_size,
+                    inner_size,
                     color,
                 );
             }
         }
-        // draw_rectangle(screen_width() / 2.0 - 60.0, 100.0, 120.0, 60.0, GREEN);
         next_frame().await
     }
-
-    // board.add_piece(&piece);
-    // board.print();
-    // board.remove_piece(&piece);
-    // piece.rotate();
-    // // piece.move_down();
-    // board.add_piece(&piece);
-    // board.print();
-    // board.remove_piece(&piece);
-    // piece.rotate();
-    // // piece.move_down();
-    // board.add_piece(&piece);
-    // board.print();
-    // board.remove_piece(&piece);
-    // piece.rotate();
-    // // piece.move_down();
-    // board.add_piece(&piece);
-    // board.print();
 }
 
 #[derive(Clone, Copy)]
@@ -227,5 +226,20 @@ impl Board {
             println!();
         }
         println!();
+    }
+}
+
+fn draw_grid(width: usize, height: usize) {
+    for y in 0..height {
+        for x in 0..width {
+            draw_rectangle_lines(
+                x as f32 * SQUARE_SIZE + MARGIN_LEFT,
+                y as f32 * SQUARE_SIZE + MARGIN_TOP,
+                SQUARE_SIZE,
+                SQUARE_SIZE,
+                1.25,
+                BLACK,
+            );
+        }
     }
 }
