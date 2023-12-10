@@ -9,6 +9,9 @@ const MARGIN_TOP: f32 = SQUARE_SIZE;
 
 const PLACEMENT_DELAY: f64 = 0.5;
 
+// the maximum number of tetrominos that can be placed on the board
+const TETROMINO_LIMIT: usize = 400;
+
 #[macroquad::main("Tetris")]
 async fn main() {
     set_window_size(
@@ -27,15 +30,30 @@ async fn main() {
     board.add_piece(&piece);
     let drop_time = 1.0;
     let mut prev_time = get_time();
+
+    let mut num_tetrominos = 0;
     loop {
+        if num_tetrominos >= TETROMINO_LIMIT {
+            println!("Out of pieces!");
+            break;
+        }
+
         // check if the previous piece is placed
         if board.is_placed(&piece) || board.just_dropped {
             board.clear_lines();
 
             piece = get_next_piece();
+
+            // check collision with the new piece
+            if board.is_colliding(&piece) {
+                println!("Game over!");
+                break;
+            }
             board.add_piece(&piece);
 
             board.just_dropped = false;
+
+            num_tetrominos += 1;
         }
 
         if is_key_pressed(KeyCode::Up) {
@@ -97,6 +115,8 @@ async fn main() {
 
         next_frame().await
     }
+
+    println!("Final score: {}", board.score);
 }
 
 #[derive(Clone, Copy)]
@@ -337,7 +357,7 @@ impl Board {
             piece.move_down();
             self.add_piece(piece);
             if update_score {
-                self.score += 2;
+                self.score += 1;
             }
         }
 
@@ -375,10 +395,10 @@ impl Board {
         }
 
         match clears {
-            1 => self.score += 100,
-            2 => self.score += 300,
-            3 => self.score += 500,
-            4 => self.score += 800,
+            1 => self.score += 25,
+            2 => self.score += 100,
+            3 => self.score += 400,
+            4 => self.score += 1600,
             _ => (),
         }
 
