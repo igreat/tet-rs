@@ -222,7 +222,7 @@ impl Piece {
             Orientation::Right => Orientation::Down,
             Orientation::Down => Orientation::Left,
             Orientation::Left => Orientation::Up,
-        }
+        };
     }
 
     fn move_left(&mut self) {
@@ -342,6 +342,20 @@ impl Board {
         false
     }
 
+    fn adjust_rotation(&mut self, piece: &mut Piece) {
+        // check if the piece is out of bounds and the closest way to make it in bounds
+        let mut x_offset = 0;
+        let coords = piece.get_coords();
+        for &(x, _) in &coords {
+            if x < 0 && -x > x_offset {
+                x_offset = -x;
+            } else if (x >= WIDTH as isize) && -(x - (WIDTH as isize - 1)) < x_offset {
+                x_offset = -(x - (WIDTH as isize - 1));
+            }
+        }
+        piece.x += x_offset;
+    }
+
     fn can_move(&mut self, piece: &Piece, mov: Move) -> bool {
         // will have to remove the piece from the board, move it, and then add it back
         self.remove_piece(piece);
@@ -350,7 +364,10 @@ impl Board {
             Move::Left => piece_copy.move_left(),
             Move::Right => piece_copy.move_right(),
             Move::Down => piece_copy.move_down(),
-            Move::Rotate => piece_copy.rotate(),
+            Move::Rotate => {
+                piece_copy.rotate();
+                self.adjust_rotation(&mut piece_copy)
+            }
             Move::Drop => {
                 self.drop_piece(&mut piece_copy, false);
                 // make sure to remove the final piece
@@ -372,7 +389,10 @@ impl Board {
                     piece.move_down();
                     self.score += 1;
                 }
-                Move::Rotate => piece.rotate(),
+                Move::Rotate => {
+                    piece.rotate();
+                    self.adjust_rotation(piece);
+                }
                 Move::Drop => self.drop_piece(piece, true),
             }
             self.add_piece(piece);
