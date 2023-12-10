@@ -133,9 +133,27 @@ impl Piece {
                 Orientation::Down => [(4, 1), (3, 0), (4, 0), (5, 0)],
                 Orientation::Left => [(4, 0), (3, 1), (4, 1), (4, 2)],
             },
-            _ => {
-                [(0, 0); 4] // yet to be implemented
-            }
+            Tetromino::L => match self.orientation {
+                Orientation::Up => [(3, 1), (4, 1), (5, 1), (5, 0)],
+                Orientation::Right => [(4, 0), (4, 1), (4, 2), (5, 2)],
+                Orientation::Down => [(3, 0), (4, 0), (5, 0), (3, 1)],
+                Orientation::Left => [(3, 0), (4, 0), (4, 1), (4, 2)],
+            },
+            Tetromino::J => match self.orientation {
+                Orientation::Up => [(3, 1), (4, 1), (5, 1), (3, 0)],
+                Orientation::Right => [(4, 0), (4, 1), (4, 2), (5, 0)],
+                Orientation::Down => [(3, 0), (4, 0), (5, 0), (5, 1)],
+                Orientation::Left => [(4, 0), (4, 1), (4, 2), (3, 2)],
+            },
+            Tetromino::S => match self.orientation {
+                Orientation::Up | Orientation::Down => [(4, 0), (5, 0), (3, 1), (4, 1)],
+                Orientation::Right | Orientation::Left => [(4, 0), (4, 1), (5, 1), (5, 2)],
+            },
+            Tetromino::Z => match self.orientation {
+                Orientation::Up | Orientation::Down => [(3, 0), (4, 0), (4, 1), (5, 1)],
+                Orientation::Right | Orientation::Left => [(5, 0), (4, 1), (5, 1), (4, 2)],
+            },
+            Tetromino::E => [(0, 0), (0, 0), (0, 0), (0, 0)], // useless case
         }
     }
 
@@ -143,7 +161,6 @@ impl Piece {
         let base_coords = self.get_base_coords();
         let mut coords = [(0, 0); 4];
         for i in 0..4 {
-            // coords[i] = (base_coords[i].0 + self.x, base_coords[i].1 + self.y);
             coords[i] = (base_coords[i].0 + self.x, base_coords[i].1 + self.y);
         }
         coords
@@ -387,11 +404,10 @@ fn get_next_piece() -> Piece {
             Tetromino::I,
             Tetromino::O,
             Tetromino::T,
-            // UNIMPLEMENTED PIECES
-            // Tetromino::S,
-            // Tetromino::Z,
-            // Tetromino::J,
-            // Tetromino::L,
+            Tetromino::S,
+            Tetromino::Z,
+            Tetromino::J,
+            Tetromino::L,
         ])
         .unwrap(),
         x: 0,
