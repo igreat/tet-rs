@@ -3,9 +3,11 @@ use macroquad::{miniquad::window::set_window_size, prelude::*};
 const WIDTH: usize = 10;
 const HEIGHT: usize = 24;
 
+// UI STUFF
 const SQUARE_SIZE: f32 = 27.0;
 const MARGIN_LEFT: f32 = SQUARE_SIZE;
 const MARGIN_TOP: f32 = SQUARE_SIZE;
+const SIDE_PANEL_WIDTH: f32 = SQUARE_SIZE * 5.0;
 
 const PLACEMENT_DELAY: f64 = 0.5;
 
@@ -15,7 +17,7 @@ const TETROMINO_LIMIT: usize = 400;
 #[macroquad::main("Tetris")]
 async fn main() {
     set_window_size(
-        ((WIDTH + 2) as f32 * SQUARE_SIZE) as u32,
+        ((WIDTH + 2) as f32 * SQUARE_SIZE) as u32 + SIDE_PANEL_WIDTH as u32,
         ((HEIGHT + 3) as f32 * SQUARE_SIZE) as u32,
     );
 
@@ -109,6 +111,32 @@ async fn main() {
                     inner_size,
                     inner_size,
                     color,
+                );
+
+                // TODO: use macroquad's ui system to draw the score
+                // display the score
+                let side_panel_middle = WIDTH as f32 * SQUARE_SIZE + SIDE_PANEL_WIDTH / 2.0;
+                // draw bounding box for the whole score
+                draw_rectangle(
+                    side_panel_middle - SIDE_PANEL_WIDTH / 5.0,
+                    MARGIN_TOP,
+                    SIDE_PANEL_WIDTH,
+                    SQUARE_SIZE * 3.0,
+                    GRAY,
+                );
+                draw_text(
+                    "Score",
+                    side_panel_middle,
+                    MARGIN_TOP + SQUARE_SIZE,
+                    35.0,
+                    BLACK,
+                );
+                draw_text(
+                    &board.score.to_string(),
+                    side_panel_middle,
+                    MARGIN_TOP + SQUARE_SIZE * 2.5,
+                    35.0,
+                    BLACK,
                 );
             }
         }
