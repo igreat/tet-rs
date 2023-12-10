@@ -210,6 +210,7 @@ enum Move {
 #[derive(Clone, Copy)]
 struct Board {
     grid: [[Tetromino; WIDTH]; HEIGHT],
+    score: u32,
     just_dropped: bool,
     is_placed_time: Option<f64>,
 }
@@ -218,6 +219,7 @@ impl Board {
     fn new() -> Board {
         Board {
             grid: [[Tetromino::E; WIDTH]; HEIGHT],
+            score: 0,
             just_dropped: false,
             is_placed_time: None,
         }
@@ -302,7 +304,7 @@ impl Board {
             Move::Down => piece_copy.move_down(),
             Move::Rotate => piece_copy.rotate(),
             Move::Drop => {
-                self.drop_piece(&mut piece_copy);
+                self.drop_piece(&mut piece_copy, false);
                 // make sure to remove the final piece
                 self.remove_piece(&piece_copy);
             }
@@ -318,17 +320,25 @@ impl Board {
             match mov {
                 Move::Left => piece.move_left(),
                 Move::Right => piece.move_right(),
-                Move::Down => piece.move_down(),
+                Move::Down => {
+                    piece.move_down();
+                    self.score += 1;
+                }
                 Move::Rotate => piece.rotate(),
-                Move::Drop => self.drop_piece(piece),
+                Move::Drop => self.drop_piece(piece, true),
             }
             self.add_piece(piece);
         }
     }
 
-    fn drop_piece(&mut self, piece: &mut Piece) {
+    fn drop_piece(&mut self, piece: &mut Piece, update_score: bool) {
         while self.can_move(piece, Move::Down) {
-            self.move_piece(piece, Move::Down);
+            self.remove_piece(piece);
+            piece.move_down();
+            self.add_piece(piece);
+            if update_score {
+                self.score += 2;
+            }
         }
 
         self.just_dropped = true;
@@ -364,8 +374,16 @@ impl Board {
             }
         }
 
+        match clears {
+            1 => self.score += 100,
+            2 => self.score += 300,
+            3 => self.score += 500,
+            4 => self.score += 800,
+            _ => (),
+        }
+
         if clears > 0 {
-            println!("cleared {} lines", clears);
+            println!("Score: {}", self.score);
         }
     }
 
