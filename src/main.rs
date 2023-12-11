@@ -1,4 +1,5 @@
 use macroquad::{miniquad::window::set_window_size, prelude::*};
+use std::time::SystemTime;
 
 const WIDTH: usize = 10;
 const HEIGHT: usize = 24;
@@ -21,9 +22,12 @@ async fn main() {
         ((HEIGHT + 3) as f32 * SQUARE_SIZE) as u32,
     );
 
+    let mut piece_chooser = PieceChooser::new(3);
+
     let mut board = Board::new();
+    let mut next_shape = piece_chooser.get_next_piece();
     let mut piece = Piece {
-        tetromino: Tetromino::T,
+        tetromino: next_shape,
         x: 0,
         y: 0,
         orientation: Orientation::Up,
@@ -34,7 +38,13 @@ async fn main() {
     let mut prev_time = get_time();
 
     let mut num_tetrominos = 0;
+
     loop {
+        set_window_size(
+            ((WIDTH + 2) as f32 * SQUARE_SIZE) as u32 + SIDE_PANEL_WIDTH as u32,
+            ((HEIGHT + 3) as f32 * SQUARE_SIZE) as u32,
+        );
+
         if num_tetrominos >= TETROMINO_LIMIT {
             println!("Out of pieces!");
             break;
@@ -44,7 +54,14 @@ async fn main() {
         if board.is_placed(&piece) || board.just_dropped {
             board.clear_lines();
 
-            piece = get_next_piece();
+            // get the next piece
+            next_shape = piece_chooser.get_next_piece();
+            piece = Piece {
+                tetromino: next_shape,
+                x: 0,
+                y: 0,
+                orientation: Orientation::Up,
+            };
 
             // check collision with the new piece
             if board.is_colliding(&piece) {
@@ -112,31 +129,103 @@ async fn main() {
                     inner_size,
                     color,
                 );
+            }
+        }
 
-                // TODO: use macroquad's ui system to draw the score
-                // display the score
-                let side_panel_middle = WIDTH as f32 * SQUARE_SIZE + SIDE_PANEL_WIDTH / 2.0;
-                // draw bounding box for the whole score
+        // display the score
+        let side_panel_middle = WIDTH as f32 * SQUARE_SIZE + SIDE_PANEL_WIDTH / 2.0;
+        let side_panel_margin_left = side_panel_middle - SIDE_PANEL_WIDTH / 5.0;
+        // draw bounding box for the whole score
+        draw_rectangle(
+            side_panel_margin_left,
+            MARGIN_TOP,
+            SIDE_PANEL_WIDTH,
+            SQUARE_SIZE * 3.0,
+            GRAY,
+        );
+        draw_text(
+            "Score",
+            side_panel_middle,
+            MARGIN_TOP + SQUARE_SIZE,
+            35.0,
+            BLACK,
+        );
+        draw_text(
+            &board.score.to_string(),
+            side_panel_middle,
+            MARGIN_TOP + SQUARE_SIZE * 2.5,
+            35.0,
+            BLACK,
+        );
+
+        // display the next pieces
+        // draw bounding box for the next pieces
+        draw_rectangle(
+            side_panel_margin_left,
+            MARGIN_TOP * 5.0,
+            SIDE_PANEL_WIDTH,
+            SQUARE_SIZE * 8.0,
+            GRAY,
+        );
+        draw_text(
+            "Next",
+            side_panel_middle + 10.0,
+            MARGIN_TOP * 5.0 + SQUARE_SIZE,
+            35.0,
+            BLACK,
+        );
+
+        let mut next_pieces = piece_chooser.next_pieces.clone();
+        next_pieces.reverse();
+        for (i, next_piece) in next_pieces.iter().enumerate() {
+            let x = side_panel_middle - SIDE_PANEL_WIDTH / 2.0;
+            let y = MARGIN_TOP + SQUARE_SIZE * 4.0 + SQUARE_SIZE * i as f32 * 4.0;
+            for &(x, y) in &(Piece {
+                tetromino: *next_piece,
+                x: 0,
+                y: 0,
+                orientation: Orientation::Up,
+            })
+            .get_coords()
+            {
+                let color = match next_piece {
+                    Tetromino::E => {
+                        continue;
+                    }
+                    Tetromino::I => BLUE,
+                    Tetromino::O => YELLOW,
+                    Tetromino::T => PURPLE,
+                    Tetromino::S => GREEN,
+                    Tetromino::Z => RED,
+                    Tetromino::J => ORANGE,
+                    Tetromino::L => BROWN,
+                };
+
+                // outer rectangle
                 draw_rectangle(
-                    side_panel_middle - SIDE_PANEL_WIDTH / 5.0,
-                    MARGIN_TOP,
-                    SIDE_PANEL_WIDTH,
-                    SQUARE_SIZE * 3.0,
-                    GRAY,
-                );
-                draw_text(
-                    "Score",
-                    side_panel_middle,
-                    MARGIN_TOP + SQUARE_SIZE,
-                    35.0,
+                    side_panel_margin_left + x as f32 * SQUARE_SIZE * 0.5,
+                    MARGIN_TOP * 5.0
+                        + y as f32 * SQUARE_SIZE * 0.5
+                        + SQUARE_SIZE * 4.0 * 0.5
+                        + SQUARE_SIZE * i as f32 * 4.0 * 0.5,
+                    SQUARE_SIZE * 0.5,
+                    SQUARE_SIZE * 0.5,
                     BLACK,
                 );
-                draw_text(
-                    &board.score.to_string(),
-                    side_panel_middle,
-                    MARGIN_TOP + SQUARE_SIZE * 2.5,
-                    35.0,
-                    BLACK,
+
+                // inner rectangle
+                let inner_size = SQUARE_SIZE * 0.4;
+                let inner_offset = (SQUARE_SIZE * 0.5 - inner_size) / 2.0;
+                draw_rectangle(
+                    side_panel_margin_left + x as f32 * SQUARE_SIZE * 0.5 + inner_offset,
+                    MARGIN_TOP * 5.0
+                        + y as f32 * SQUARE_SIZE * 0.5
+                        + SQUARE_SIZE * 4.0 * 0.5
+                        + SQUARE_SIZE * i as f32 * 4.0 * 0.5
+                        + inner_offset,
+                    inner_size,
+                    inner_size,
+                    color,
                 );
             }
         }
@@ -484,9 +573,43 @@ fn draw_grid(width: usize, height: usize) {
     }
 }
 
-fn get_next_piece() -> Piece {
-    Piece {
-        tetromino: *rand::ChooseRandom::choose(&vec![
+struct PieceChooser {
+    next_pieces: Vec<Tetromino>,
+    max_next_pieces: usize,
+    // TODO: currently doesn't do anything
+    seed: u64,
+}
+
+impl PieceChooser {
+    fn new(max_next_pieces: usize) -> PieceChooser {
+        PieceChooser {
+            next_pieces: (0..max_next_pieces)
+                .map(|_| PieceChooser::_get_random_piece())
+                .collect(),
+            max_next_pieces,
+            seed: 0,
+        }
+    }
+
+    fn get_next_piece(&mut self) -> Tetromino {
+        let new_shape = PieceChooser::_get_random_piece();
+
+        let next_shape;
+        if self.next_pieces.len() == self.max_next_pieces {
+            next_shape = self.next_pieces.pop().unwrap()
+        } else {
+            // this branch should technically never be reached
+            // but I'll include this as a failsafe
+            next_shape = PieceChooser::_get_random_piece();
+        }
+
+        self.next_pieces.insert(0, new_shape);
+
+        next_shape
+    }
+
+    fn _get_random_piece() -> Tetromino {
+        *rand::ChooseRandom::choose(&vec![
             Tetromino::I,
             Tetromino::O,
             Tetromino::T,
@@ -495,9 +618,6 @@ fn get_next_piece() -> Piece {
             Tetromino::J,
             Tetromino::L,
         ])
-        .unwrap(),
-        x: 0,
-        y: 0,
-        orientation: Orientation::Up,
+        .unwrap()
     }
 }
