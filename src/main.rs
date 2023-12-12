@@ -121,8 +121,8 @@ async fn main() {
 
                     // check collision with the new piece
                     if board.is_colliding(&piece) {
-                        println!("Game over!");
-                        break;
+                        game_state = GameState::GameOver;
+                        continue;
                     }
                     board.add_piece(&piece);
 
@@ -301,7 +301,78 @@ async fn main() {
 
                 next_frame().await
             }
-            GameState::GameOver => {}
+            GameState::GameOver => {
+                set_window_size(
+                    ((WIDTH + 2) as f32 * SQUARE_SIZE) as u32 + SIDE_PANEL_WIDTH as u32,
+                    ((HEIGHT + 3) as f32 * SQUARE_SIZE) as u32,
+                );
+
+                clear_background(Color::from_rgba(40, 40, 40, 255));
+                // shadow
+                draw_text(
+                    "Game over!",
+                    WIDTH as f32 * SQUARE_SIZE / 2.0 - 120.0 + 5.0,
+                    HEIGHT as f32 * SQUARE_SIZE / 2.0 + 5.0,
+                    100.0,
+                    BLACK,
+                );
+                draw_text(
+                    "Game over!",
+                    WIDTH as f32 * SQUARE_SIZE / 2.0 - 120.0,
+                    HEIGHT as f32 * SQUARE_SIZE / 2.0,
+                    100.0,
+                    RED,
+                );
+
+                // score shadow
+                draw_text(
+                    &format!("Score {}", board.score),
+                    WIDTH as f32 * SQUARE_SIZE / 2.0 - 20.0 + 4.0,
+                    HEIGHT as f32 * SQUARE_SIZE / 2.0 + 50.0 + 4.0,
+                    50.0,
+                    BLACK,
+                );
+                draw_text(
+                    &format!("Score {}", board.score),
+                    WIDTH as f32 * SQUARE_SIZE / 2.0 - 20.0,
+                    HEIGHT as f32 * SQUARE_SIZE / 2.0 + 50.0,
+                    50.0,
+                    WHITE,
+                );
+
+                // shadow
+                draw_text(
+                    "Press space to restart",
+                    WIDTH as f32 * SQUARE_SIZE / 2.0 - 40.0 + 5.0,
+                    HEIGHT as f32 * SQUARE_SIZE / 2.0 + 100.0 + 5.0,
+                    25.0,
+                    BLACK,
+                );
+                draw_text(
+                    "Press space to restart",
+                    WIDTH as f32 * SQUARE_SIZE / 2.0 - 40.0 + 5.0,
+                    HEIGHT as f32 * SQUARE_SIZE / 2.0 + 100.0,
+                    25.0,
+                    WHITE,
+                );
+
+                if is_key_pressed(KeyCode::Space) {
+                    game_state = GameState::Playing;
+                    board = Board::new();
+                    next_shape = piece_chooser.get_next_piece();
+                    piece = Piece {
+                        tetromino: next_shape,
+                        x: 0,
+                        y: 0,
+                        orientation: Orientation::Up,
+                    };
+                    board.add_piece(&piece);
+                    prev_time = get_time();
+                    num_tetrominos = 0;
+                }
+
+                next_frame().await
+            }
         }
     }
 
