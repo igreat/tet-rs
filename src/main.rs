@@ -1,13 +1,17 @@
 use macroquad::{miniquad::window::set_window_size, prelude::*};
-use std::time::SystemTime;
+use std::{thread::sleep, time::SystemTime};
 
 mod constants;
 mod draw;
 mod game;
+mod player;
 
 use constants::*;
 use draw::*;
 use game::*;
+use player::{Player, RandomPlayer};
+
+const MANUAL: bool = true;
 
 #[macroquad::main("Tetris")]
 async fn main() {
@@ -19,6 +23,8 @@ async fn main() {
     let mut game_state = GameState::Menu;
 
     let mut piece_chooser = PieceChooser::new(3);
+    let player = RandomPlayer;
+    let mut chosen_moves = Vec::new();
 
     let mut board = Board::new();
     let mut next_shape = piece_chooser.get_next_piece();
@@ -58,7 +64,7 @@ async fn main() {
                     piece = Piece::new(next_shape);
 
                     // check collision with the new piece
-                    if board.is_colliding(&piece) {
+                    if board.will_collide(&piece) {
                         game_state = GameState::GameOver;
                         continue;
                     }
@@ -69,21 +75,31 @@ async fn main() {
                     num_tetrominos += 1;
                 }
 
-                if is_key_pressed(KeyCode::Up) {
-                    board.move_piece(&mut piece, Move::Rotate);
+                if MANUAL {
+                    if is_key_pressed(KeyCode::Up) {
+                        board.move_piece(&mut piece, Move::Rotate);
+                    }
+                    if is_key_pressed(KeyCode::Down) {
+                        board.move_piece(&mut piece, Move::Down);
+                    }
+                    if is_key_pressed(KeyCode::Right) {
+                        board.move_piece(&mut piece, Move::Right);
+                    }
+                    if is_key_pressed(KeyCode::Left) {
+                        board.move_piece(&mut piece, Move::Left);
+                    }
+                    if is_key_pressed(KeyCode::Space) {
+                        board.move_piece(&mut piece, Move::Drop);
+                    }
+                } else {
+                    if chosen_moves.len() > 0 {
+                        board.move_piece(&mut piece, chosen_moves[0]);
+                        chosen_moves.remove(0);
+                    } else {
+                        chosen_moves = player.choose_moves(&board, &piece);
+                    }
                 }
-                if is_key_pressed(KeyCode::Down) {
-                    board.move_piece(&mut piece, Move::Down);
-                }
-                if is_key_pressed(KeyCode::Right) {
-                    board.move_piece(&mut piece, Move::Right);
-                }
-                if is_key_pressed(KeyCode::Left) {
-                    board.move_piece(&mut piece, Move::Left);
-                }
-                if is_key_pressed(KeyCode::Space) {
-                    board.move_piece(&mut piece, Move::Drop);
-                }
+
                 if get_time() - prev_time > drop_time {
                     board.move_piece(&mut piece, Move::Down);
                     prev_time = get_time();
@@ -113,6 +129,11 @@ async fn main() {
                 }
             }
         }
+        // add a delay to the game loop if not in manual mode
+        if !MANUAL {
+            sleep(std::time::Duration::from_millis(100));
+        }
+
         next_frame().await
     }
 

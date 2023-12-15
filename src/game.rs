@@ -130,7 +130,7 @@ pub enum Orientation {
     Left,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum Move {
     Left,
     Right,
@@ -169,7 +169,7 @@ impl Board {
         }
     }
 
-    fn is_out_of_bounds(&self, piece: &Piece) -> bool {
+    pub fn is_out_of_bounds(&self, piece: &Piece) -> bool {
         for &(x, y) in &piece.get_coords() {
             if x < 0 || x >= WIDTH as isize || y >= HEIGHT as isize {
                 return true;
@@ -178,7 +178,24 @@ impl Board {
         false
     }
 
-    pub fn is_colliding(&self, piece: &Piece) -> bool {
+    pub fn is_colliding(&mut self, piece: &Piece) -> bool {
+        self.remove_piece(piece);
+        for &(x, y) in &piece.get_coords() {
+            match self.grid[y as usize][x as usize] {
+                Tetromino::E => continue,
+                _ => {
+                    return {
+                        self.add_piece(piece);
+                        true
+                    }
+                }
+            }
+        }
+        self.add_piece(piece);
+        false
+    }
+
+    pub fn will_collide(&mut self, piece: &Piece) -> bool {
         for &(x, y) in &piece.get_coords() {
             match self.grid[y as usize][x as usize] {
                 Tetromino::E => continue,
@@ -258,8 +275,9 @@ impl Board {
                 self.remove_piece(&piece_copy);
             }
         }
-        let can_move = !self.is_out_of_bounds(&piece_copy) && !self.is_colliding(&piece_copy);
         self.add_piece(piece);
+
+        let can_move = !self.is_out_of_bounds(&piece_copy) && !self.is_colliding(&piece_copy);
         can_move
     }
 
@@ -335,7 +353,7 @@ impl Board {
         }
     }
 
-    fn print(&self) {
+    pub fn print(&self) {
         for row in self.grid.iter() {
             for &cell in row {
                 match cell {
