@@ -1,12 +1,5 @@
+use crate::constants::*;
 use macroquad::prelude::*;
-
-pub const WIDTH: usize = 10;
-pub const HEIGHT: usize = 24;
-
-pub const PLACEMENT_DELAY: f64 = 0.5;
-
-// the maximum number of tetrominos that can be placed on the board
-pub const TETROMINO_LIMIT: usize = 400;
 
 #[derive(Clone, Copy)]
 pub enum GameState {
