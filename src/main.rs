@@ -11,7 +11,7 @@ use draw::*;
 use game::*;
 use player::{Player, RandomPlayer};
 
-const MANUAL: bool = true;
+const MANUAL: bool = false;
 
 #[macroquad::main("Tetris")]
 async fn main() {
@@ -64,7 +64,7 @@ async fn main() {
                     piece = Piece::new(next_shape);
 
                     // check collision with the new piece
-                    if board.will_collide(&piece) {
+                    if board.is_colliding(&piece) {
                         game_state = GameState::GameOver;
                         continue;
                     }
@@ -73,6 +73,11 @@ async fn main() {
                     board.just_dropped = false;
 
                     num_tetrominos += 1;
+                }
+
+                if get_time() - prev_time > drop_time {
+                    board.move_piece(&mut piece, Move::Down);
+                    prev_time = get_time();
                 }
 
                 if MANUAL {
@@ -98,11 +103,6 @@ async fn main() {
                     } else {
                         chosen_moves = player.choose_moves(&board, &piece);
                     }
-                }
-
-                if get_time() - prev_time > drop_time {
-                    board.move_piece(&mut piece, Move::Down);
-                    prev_time = get_time();
                 }
 
                 draw_tetris_grid(WIDTH, HEIGHT);
